@@ -4,3 +4,7 @@ __pycache__/
 folklore.db
 *.pyc
 .pytest_cache/
+ollama_test.py
+usda_test.py
+data_use.txt
+
