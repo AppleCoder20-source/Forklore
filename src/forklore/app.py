@@ -4,11 +4,15 @@ import requests
 from dotenv import load_dotenv
 from forklore.models import parse_usda_response
 from forklore.core.grader import grade_food
+from langchain_ollama import ChatOllama
 
 
 load_dotenv()
 USDA_API_KEY = os.getenv("USDA_API_KEY")
 USDA_URL = "https://api.nal.usda.gov/fdc/v1/foods/search"
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "gemma3:4b")
+
 
 def usda_api(query):
     response = requests.get(
@@ -22,6 +26,32 @@ def usda_api(query):
     response.raise_for_status()
     foods = response.json().get("foods", [])
     return foods[0] if foods else None
+
+
+@st.cache_resource
+def get_llm():
+    return ChatOllama(model=OLLAMA_MODEL, base_url=OLLAMA_HOST, temperature=0.2)
+
+
+def write_summary(nutrition, letter, pct):
+    llm = get_llm()
+    prompt = f"""You are a friendly nutrition assistant.
+Write ONE short sentence (under 30 words) about why this food got this grade.
+Mention the 1-2 nutrients that drove the grade.
+Use the actual numbers below (all per 100g/ml). Don't invent values. No medical advice.
+
+Food: {nutrition.description}
+Grade: {letter} ({pct}%)
+Sodium: {nutrition.sodium_mg} mg
+Saturated fat: {nutrition.saturated_fat_g} g
+Added sugar: {nutrition.bad_sugar_g} g
+Natural sugar: {nutrition.natural_sugar_g} g
+Trans fat: {nutrition.trans_fat_g} g
+Fiber: {nutrition.fiber_g} g
+Protein: {nutrition.protein_g} g
+"""
+    return llm.invoke(prompt).content.strip()
+
 
 st.title("🥗 Forklore")
 food_input = st.text_input("Enter a food name to grade", placeholder = "Big Mac")
@@ -45,6 +75,11 @@ if st.button("Analyze"):
             f"</div>",
             unsafe_allow_html=True,
         )
+
+        #LLM summary sentence
+        with st.spinner("Writing summary..."):
+            summary = write_summary(retrieve_food, letter, pct)
+        st.write(summary)
 
         st.write(food["description"])    # which exact Fanta is this?
         st.write(retrieve_food)          # the clean parsed nutrition
