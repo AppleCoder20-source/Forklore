@@ -6,5 +6,7 @@ folklore.db
 .pytest_cache/
 ollama_test.py
 usda_test.py
+test_app.py
 data_use.txt
+
 

@@ -1,19 +1,30 @@
-from forklore.models import Nutrition
+from forklore.models import Nutrition, is_drink_food
 
 
 def grade_food(n: Nutrition) -> tuple[str, str, int]:
     """Return (letter_grade, hex_color, percentage_0_to_100).
     Thresholds are per 100g/ml. Drinks use a stricter sugar scale."""
-    is_drink = n.serving_unit == "ml"
+    is_drink = _is_drink(n)
 
     # Score each nutrient (4 = best, 1 = worst)
     scores = [
         _score_sodium(n.sodium_mg),
         _score_sat_fat(n.saturated_fat_g),
         _score_sugar(n.bad_sugar_g, is_drink),
-        _score_fiber(n.fiber_g),
-        _score_protein(n.protein_g),
     ]
+
+    # Fiber & protein are "get-enough" nutrients. For SOLID foods we always
+    # score them (a meal should have them). For DRINKS we only count them
+    # if they're meaningfully present (e.g. a protein shake or smoothie) —
+    # otherwise we don't penalize a drink like black coffee for lacking
+    # nutrients you don't drink it for.
+    fiber_score = _score_fiber(n.fiber_g)
+    if fiber_score >= 3:                 # only count if actually present
+            scores.append(_score_fiber(n.fiber_g))
+    protien_score = _score_protein(n.protein_g)
+    if protien_score >= 3:                 # only count if actually present
+            scores.append(_score_protein(n.protein_g))
+
     avg = sum(scores) / len(scores)
 
     # Average → letter
@@ -65,6 +76,10 @@ def grade_food(n: Nutrition) -> tuple[str, str, int]:
 
 
 # ---- Internal scoring helpers (per 100g/ml) ----
+
+def _is_drink(n: Nutrition) -> bool:
+    return is_drink_food(n.description, n.serving_unit)
+
 
 def _score_sugar(value: float, is_drink: bool) -> int:
     if is_drink:                      # drinks stricter
