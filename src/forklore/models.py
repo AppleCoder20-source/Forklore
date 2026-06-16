@@ -11,6 +11,7 @@ class Nutrition(BaseModel):
     trans_fat_g: NonNegativeFloat = 0
     bad_sugar_g: NonNegativeFloat = 0        # added sugar (ID 1235) — graded
     natural_sugar_g: NonNegativeFloat = 0    # total sugar (ID 2000) — display only
+    brand: str = ""
     fiber_g: NonNegativeFloat = 0
     protein_g: NonNegativeFloat = 0
 
@@ -46,6 +47,7 @@ def is_drink_food(description: str, serving_unit: str | None) -> bool:
 
 def parse_usda_response(food: dict) -> Nutrition:
     values = {field: 0.0 for field in NUTRIENT_IDS.values()}
+    values["brand"] = food.get("brandOwner", "") 
     for n in food.get("foodNutrients", []):
         nid = n.get("nutrientId")
         val = n.get("value", 0) or 0

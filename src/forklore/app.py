@@ -3,10 +3,12 @@ import os
 from dotenv import load_dotenv
 from forklore.models import parse_usda_response, is_drink_food
 from forklore.core.grader import grade_food
-from forklore.core.retrieval import is_coherent
+from forklore.core.retrieval import is_coherent, is_composite_food
 from forklore.core.customize import apply_additions
+from forklore.core.combine   import grade_from_ingredients
 from forklore.ai.refinement import refine_query
 from forklore.ai.summary import write_summary
+from forklore.ai.ingredients import suggest_ingredients
 from forklore.data.usda_client import usda_search_all, pick_best_food
 
 
@@ -24,9 +26,13 @@ SIZE_OPTIONS = {
 
 def show_grade(food):
     retrieve_food = parse_usda_response(food)
+    if retrieve_food.brand:
+        st.subheader(f"{retrieve_food.description} — {retrieve_food.brand}")
+    else:
+        st.subheader(retrieve_food.description)
 
     is_drink = is_drink_food(retrieve_food.description, retrieve_food.serving_unit)
-    show_customization = is_drink or st.session_state.get("was_ambiguous")
+    show_customization = is_drink
 
     if show_customization:
         st.write("☕ How did you make it? (optional)")
@@ -41,6 +47,18 @@ def show_grade(food):
         if not st.button("Calculate grade", key="calc"):
             return
 
+    _render_grade(retrieve_food, show_raw=food["description"])
+
+
+def show_grade_nutrition(retrieve_food):
+    """Grade an already-built Nutrition object (used for homemade dishes,
+    which are combined from ingredients rather than a single USDA entry)."""
+    st.subheader(retrieve_food.description)
+    _render_grade(retrieve_food)
+
+
+def _render_grade(retrieve_food, show_raw=None):
+    """Shared: grade a Nutrition object, draw the badge, write the summary."""
     letter, color, pct = grade_food(retrieve_food)
 
     st.markdown(
@@ -53,10 +71,12 @@ def show_grade(food):
     )
 
     with st.spinner("Writing summary..."):
-        summary = write_summary(retrieve_food, letter, pct,st.session_state.get("provider","local"))
+        summary = write_summary(retrieve_food, letter, pct,
+                                st.session_state.get("provider", "local"))
     st.write(summary)
 
-    st.write(food["description"])
+    if show_raw:
+        st.write(show_raw)
     st.write(retrieve_food)
 
 
@@ -69,34 +89,125 @@ with st.sidebar:
     st.session_state.provider = provider
 
     # Little status indicator so it's clear which is active
-    if provider == "Claude":
+    if provider == "claude":
         st.success("Using Claude ✨")
     else:
         st.info("Using Local 🖥️ (Model)")
 food_input = st.text_input("Enter a food name to grade", placeholder="Big Mac")
 
 if st.button("Analyze"):
-    foods = usda_search_all(food_input)
-
-    if not foods:
-        st.error("No results found try again")
+    # Composite foods (burrito, sandwich) → ask restaurant or homemade FIRST,
+    # before any USDA lookup.
+    if is_composite_food(food_input):
+        st.session_state.composite_food = food_input
+        st.session_state.composite_choice = None
+        st.session_state.homemade_ingredients = None
         st.session_state.refinement = None
         st.session_state.chosen_food = None
+        st.session_state.chosen_food_obj = None
         st.session_state.all_foods = None
         st.session_state.was_ambiguous = False
-    elif is_coherent(foods):
-        # Coherent → auto-grab the best entry (prefers raw fruit/food).
-        # Also save the full list so we can offer other versions below.
-        st.session_state.chosen_food = pick_best_food(foods)
+    else:
+        st.session_state.composite_food = None
+        foods = usda_search_all(food_input)
+
+        if not foods:
+            st.error("No results found try again")
+            st.session_state.refinement = None
+            st.session_state.chosen_food = None
+            st.session_state.all_foods = None
+            st.session_state.was_ambiguous = False
+        elif is_coherent(foods):
+            # Coherent → auto-grab the best entry (prefers raw fruit/food).
+            # Also save the full list so we can offer other versions below.
+            st.session_state.chosen_food = pick_best_food(foods)
+            st.session_state.all_foods = foods
+            st.session_state.refinement = None
+            st.session_state.was_ambiguous = False
+        else:
+            # Scattered (e.g. "coffee") → ask which kind
+            st.session_state.refinement = refine_query(food_input, foods, provider)
+            st.session_state.all_foods = foods
+            st.session_state.chosen_food = None
+            st.session_state.was_ambiguous = True
+
+# Composite food: ask restaurant or homemade
+if st.session_state.get("composite_food") and not st.session_state.get("composite_choice"):
+    st.write(f"Is your {st.session_state.composite_food} from a restaurant, or homemade?")
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🏪 Restaurant"):
+            st.session_state.composite_choice = "restaurant"
+    with col2:
+        if st.button("🏠 Homemade"):
+            st.session_state.composite_choice = "homemade"
+
+# Restaurant → look it up in USDA like a normal food
+if st.session_state.get("composite_choice") == "restaurant":
+    foods = usda_search_all(st.session_state.composite_food)
+    if foods:
+        st.session_state.chosen_food = pick_best_food(foods, st.session_state.composite_food)
         st.session_state.all_foods = foods
-        st.session_state.refinement = None
         st.session_state.was_ambiguous = False
     else:
-        # Scattered (e.g. "coffee") → ask which kind
-        st.session_state.refinement = refine_query(food_input, foods,provider)
-        st.session_state.all_foods = foods
-        st.session_state.chosen_food = None
-        st.session_state.was_ambiguous = True
+        st.error("No restaurant version found — try homemade.")
+    st.session_state.composite_food = None
+    st.session_state.composite_choice = None
+
+# Homemade → suggest ingredients (with amounts), let user edit, then grade
+if st.session_state.get("composite_choice") == "homemade":
+    food_name = st.session_state.composite_food
+
+    # Suggest ingredients (with grams) once, store as editable text
+    if not st.session_state.get("homemade_ingredients"):
+        with st.spinner("Thinking of typical ingredients..."):
+            suggested = suggest_ingredients(food_name, provider)
+        # format as "name, grams" per line
+        lines = [f"{ing.name}, {int(ing.grams)}" for ing in suggested]
+        st.session_state.homemade_ingredients = "\n".join(lines)
+
+    st.write(f"Here's what's typically in a homemade {food_name} "
+             f"(ingredient, grams) — edit amounts or items however you like:")
+    text = st.text_area(
+        "Ingredients (one per line — 'name, grams'):",
+        value=st.session_state.homemade_ingredients,
+        height=220,
+        key="ingredient_box",
+    )
+
+    if st.button("Grade my homemade dish"):
+        # Parse "name, grams" lines into (name, grams) tuples
+        ingredients = []
+        for line in text.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            if "," in line:
+                name, _, grams = line.rpartition(",")
+                name = name.strip()
+                try:
+                    grams = float(grams.strip())
+                except ValueError:
+                    grams = 100.0          # default if they typed a bad number
+            else:
+                name, grams = line, 100.0  # no amount given → assume 100g
+            if name:
+                ingredients.append((name, grams))
+
+        if not ingredients:
+            st.error("Add at least one ingredient.")
+        else:
+            with st.spinner("Looking up each ingredient in USDA..."):
+                combined, found, missing = grade_from_ingredients(ingredients)
+            if not found:
+                st.error("Couldn't find any of those ingredients in USDA — try simpler names.")
+            else:
+                if missing:
+                    st.warning(f"Couldn't find in USDA (skipped): {', '.join(missing)}")
+                st.session_state.chosen_food_obj = combined
+                st.session_state.composite_food = None
+                st.session_state.composite_choice = None
+                st.session_state.homemade_ingredients = None
 
 # Refinement question (for scattered searches like "coffee")
 if st.session_state.get("refinement"):
@@ -122,7 +233,12 @@ if st.session_state.get("refinement"):
         else:
             st.error("No results for that — try another search")
 
-# Grade the chosen food
+# Grade a homemade combined dish (already a Nutrition object)
+if st.session_state.get("chosen_food_obj"):
+    show_grade_nutrition(st.session_state.chosen_food_obj)
+    st.session_state.chosen_food_obj = None
+
+# Grade the chosen food (raw USDA entry)
 if st.session_state.get("chosen_food"):
     show_grade(st.session_state.chosen_food)
 

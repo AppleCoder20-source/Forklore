@@ -34,24 +34,29 @@ def usda_search_all(query):
 GENERIC_TYPES = ("Survey (FNDDS)", "SR Legacy")
 
 
-def pick_best_food(foods):
-    """Pick the best entry to grade from USDA results.
 
-    Priority:
-      1. A 'raw' entry (e.g. "Banana, raw") — the actual unprocessed food.
-      2. Any generic entry (Survey / SR Legacy) over Branded products.
-      3. Whatever's first (fallback, e.g. a Big Mac that's only Branded).
-    """
-    # 1. Prefer an entry described as "raw" (the real unprocessed fruit/food)
+def pick_best_food(foods, query=""):
+    query = query.lower().strip()
+
+    # 1. If the search closely matches a BRANDED product name, prefer it.
+    #    (e.g. searching "drumstick" when there's a branded "DRUMSTICK")
+    if query:
+        for food in foods:
+            desc = food.get("description", "").lower()
+            is_branded = food.get("dataType") == "Branded"
+            # strong match: the query is the whole description, or vice versa
+            if is_branded and (query in desc or desc in query):
+                return food
+
+    # 2. Prefer an entry described as "raw" (real whole food)
     for food in foods:
-        description = food.get("description", "").lower()
-        if "raw" in description:
+        if "raw" in food.get("description", "").lower():
             return food
 
-    # 2. Otherwise prefer generic data types over Branded products
+    # 3. Otherwise prefer generic data types over Branded
     generic = [f for f in foods if f.get("dataType") in GENERIC_TYPES]
     if generic:
         return generic[0]
 
-    # 3. Fall back to the first result
+    # 4. Fall back to the first result
     return foods[0]

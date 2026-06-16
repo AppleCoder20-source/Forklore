@@ -1,3 +1,17 @@
+COMPOSITE_FOODS = [
+    "taco", "burrito", "sandwich", "wrap", "salad", "bowl",
+    "quesadilla", "burger", "stir fry", "casserole",
+    "soup", "stew", "curry", "pasta", "sub", "panini",
+]
+
+
+def is_composite_food(query: str) -> bool:
+    """True if the food is typically made of multiple ingredients, so it makes
+    sense to ask 'restaurant or homemade?'"""
+    query = query.lower()
+    return any(word in query for word in COMPOSITE_FOODS)
+
+
 def is_coherent(foods):
     if len(foods) <= 1:
         return True
