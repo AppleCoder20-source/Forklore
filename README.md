@@ -1,4 +1,3 @@
-# Forklore
 <div align="center">
 
 # 🥗 Forklore
@@ -21,17 +20,20 @@ Type in a food. Forklore looks it up in the USDA's official database, grades it 
 
 1. [The idea behind it](#the-idea-behind-it)
 2. [What it does, end to end](#what-it-does-end-to-end)
-3. [The grading rubric](#1-the-grading-rubric--grounded-in-real-world-systems)
-4. [Stricter scale for drinks](#2-drinks-are-graded-on-a-stricter-scale)
-5. [Picking the right food](#3-picking-the-right-food-from-messy-data)
-6. [Handling ambiguity](#4-handling-ambiguous-searches--without-hallucinating)
-7. [Customization](#5-customization--personalized-and-grounded)
-8. [The explanation layer](#6-the-explanation-layer--language-not-math)
-9. [Code at a glance](#code-at-a-glance)
-10. [Built through testing](#built-through-testing-not-assumption)
-11. [Honest limitations](#honest-limitations)
-12. [Tech stack & structure](#tech-stack)
-13. [Running it](#running-it)
+3. [Project structure](#project-structure)
+4. [The grading rubric](#1-the-grading-rubric--grounded-in-real-world-systems)
+5. [Stricter scale for drinks](#2-drinks-are-graded-on-a-stricter-scale)
+6. [Picking the right food](#3-picking-the-right-food-from-messy-data)
+7. [Handling ambiguity](#4-handling-ambiguous-searches--without-hallucinating)
+8. [Customization](#5-customization--personalized-and-grounded)
+9. [The explanation layer](#6-the-explanation-layer--language-not-math)
+10. [Homemade dishes](#7-homemade-dishes--composite-foods-graded-from-real-ingredients)
+11. [Knowing the brand](#8-knowing-the-brand)
+12. [Code at a glance](#code-at-a-glance)
+13. [Built through testing](#built-through-testing-not-assumption)
+14. [Honest limitations](#honest-limitations)
+15. [Tech stack](#tech-stack)
+16. [Running it](#running-it)
 
 ---
 
@@ -64,6 +66,30 @@ For drinks, you can customize it (what you added) and it re-grades on real math
 ```
 
 Each of those stages was a deliberate design decision. Here's the walkthrough.
+
+---
+
+## Project structure
+
+```
+src/forklore/
+├── app.py                 # UI + orchestration (Streamlit)
+├── models.py              # Nutrition data model + USDA parsing + drink detection
+├── core/
+│   ├── grader.py          # the A–F grading rubric
+│   ├── retrieval.py       # ambiguity check + composite-food detection
+│   ├── customize.py       # per-100ml addition math
+│   └── combine.py         # weighted ingredient combining (homemade dishes)
+├── ai/
+│   ├── llm.py             # model factory (local / Claude)
+│   ├── refinement.py      # ambiguity clustering (grounded)
+│   ├── ingredients.py     # ingredient + amount suggestion (homemade)
+│   └── summary.py         # the plain-English explanation
+└── data/
+    └── usda_client.py     # USDA search + best-entry selection
+```
+
+The architecture follows a clear rule: **data shape** lives in `models.py`, **pure logic** in `core/`, **outside I/O** in `data/`, **language-model work** in `ai/`, and **UI** in `app.py`. Each part does one job and can be reasoned about on its own.
 
 ---
 
@@ -170,6 +196,34 @@ Same app, same grounding rules — your choice between local privacy and cloud q
 
 ---
 
+## 7. Homemade dishes — composite foods, graded from real ingredients
+
+Some foods aren't a single database entry. A "burrito" or "sandwich" can be a restaurant item *or* something you made yourself, and a homemade version has no one USDA row to look up. So Forklore handles them specially.
+
+When you search a composite food (taco, burrito, sandwich, bowl, etc.), it asks: **restaurant or homemade?**
+
+- **Restaurant** → it looks the dish up in USDA and grades that entry, like any other food.
+- **Homemade** → the AI suggests a typical ingredient list *with realistic gram amounts*, you edit it however you like, and then **each ingredient is looked up in USDA and combined into a real grade.**
+
+The combination is **weighted by amount**, which matters more than it sounds. Each ingredient's nutrients are scaled to how much of it is actually in the dish, summed, and converted back to a per-100g profile:
+
+```
+each ingredient:  per-100g nutrients × (its grams / 100)   → its real contribution
+whole dish:       sum all contributions ÷ total grams × 100 → per-100g profile
+```
+
+This fixes a subtle trap: a naive equal average would let a small amount of an intense ingredient (30g of cheese at ~19g saturated fat per 100g) count the same as a large amount of a mild one (100g of rice). That over-weighting pushed a burrito to a D it didn't deserve. Weighting by real amounts drops its saturated fat to a fair value — and the grade with it.
+
+**The grounding holds even here:** the AI only *suggests* ingredient names and portions, both fully editable. Every nutrient number comes from USDA, and the grade comes from the same rubric as everything else. The AI never estimates a grade — it proposes a starting point, and real data does the rest.
+
+---
+
+## 8. Knowing the brand
+
+When a graded food is a branded product, Forklore shows the brand alongside its name (pulled from USDA's data). Generic, whole-food entries — "Banana, raw," "Coffee, brewed" — have no brand, by design, because they aren't products. It's a small touch that reflects the same honesty as the rest of the app: it shows a brand only when there genuinely is one.
+
+---
+
 ## Code at a glance
 
 A few key pieces, to show how the design ideas above turn into actual code. Each is small on purpose — the logic stays readable.
@@ -242,6 +296,17 @@ factor = drink_size_ml / 100             # 250ml → 2.5
 nutrition.bad_sugar_g += added_sugar_g / factor   # 30g added → +12g per 100ml
 ```
 
+### Weighted ingredient combining (`core/combine.py`)
+
+For homemade dishes, each ingredient's per-100g nutrients are scaled to its real amount, summed, and converted back to a per-100g profile — so a small amount of an intense ingredient doesn't dominate.
+
+```python
+factor = grams / 100.0                          # 30g of cheese → 0.30
+totals[field] += getattr(n, field) * factor     # scale to its real amount
+...
+per_100g = (totals[field] / total_grams) * 100  # back to a per-100g dish profile
+```
+
 ---
 
 ## Built through testing, not assumption
@@ -250,6 +315,7 @@ Several of the best design decisions came from **running the app and noticing wh
 
 - A banana graded a **D** → traced to a bad *branded* entry (594mg sodium) → fixed by preferring raw foods.
 - Black coffee graded a **C**, apple a **B** → traced to fiber/protein unfairly penalizing clean foods → fixed by making them bonuses.
+- A homemade burrito graded a **D** → traced to *equal-weighting* the ingredients, which let a little cheese count as much as a lot of rice → fixed by weighting the combine by real amounts.
 - The diversity threshold was **tuned against real foods** until it correctly told ambiguous (coffee) from clear (banana).
 
 These weren't caught by error messages — there were no errors. They were caught by checking the output against what a grade *should* be. That kind of evaluation is the heart of the project.
@@ -279,26 +345,6 @@ Naming these isn't a weakness — it's the same principle as everything else. Th
 | Models | Ollama (`llama3.2`) locally, or Anthropic Claude |
 | Validation | Pydantic |
 | Packaging | uv |
-
-### Project structure
-
-```
-src/forklore/
-├── app.py                 # UI + orchestration (Streamlit)
-├── models.py              # Nutrition data model + USDA parsing + drink detection
-├── core/
-│   ├── grader.py          # the A–F grading rubric
-│   ├── retrieval.py       # ambiguity (diversity) check
-│   └── customize.py       # per-100ml addition math
-├── ai/
-│   ├── llm.py             # model factory (local / Claude)
-│   ├── refinement.py      # ambiguity clustering (grounded)
-│   └── summary.py         # the plain-English explanation
-└── data/
-    └── usda_client.py     # USDA search + best-entry selection
-```
-
-The architecture follows a clear rule: **data shape** lives in `models.py`, **pure logic** in `core/`, **outside I/O** in `data/`, **language-model work** in `ai/`, and **UI** in `app.py`. Each part does one job and can be reasoned about on its own.
 
 ---
 
