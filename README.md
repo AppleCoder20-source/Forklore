@@ -478,6 +478,6 @@ uv run streamlit run src/forklore/app.py
 
 **Forklore** — *grade real data, explain it honestly, never guess.*
 
-Built with Python, Streamlit, LangChain, USDA FoodData Central, and FatSecret.
+Built with Python, Streamlit, LangChain, USDA FoodData Central, and FatSecrets .
 
 </div>
