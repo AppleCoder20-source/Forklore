@@ -28,26 +28,49 @@ NUTRIENT_IDS = {
 }
 
 
+# Words that signal a drink. Sodas are stored by FatSecret with a GRAM serving
+# (serving_unit="g"), so the ml check below doesn't catch them — these brand /
+# category words do. "bottle" is deliberately NOT here: it matched non-drinks
+# like "bottle gourd".
 DRINK_WORDS = [
     "drink", "juice", "soda", "beverage", "cola",
     "lemonade", "punch", "tea", "coffee", "smoothie",
+    "latte", "macchiato", "frappuccino", "cappuccino",
+    "espresso", "americano", "mocha", "cold brew",
+    "iced coffee", "frappe", "refresher", "milkshake", "shake",
+    # common soda brands / terms (FatSecret serves these in grams)
+    "sprite", "pepsi", "fanta", "coke", "coca-cola", "coca cola",
+    "mountain dew", "mtn dew", "dr pepper", "sunkist", "fizz",
+    "root beer", "ginger ale", "tonic", "seltzer", "soft drink",
+    "gatorade", "powerade", "energy drink", "red bull",
 ]
 
 
 def is_drink_food(description: str, serving_unit: str | None) -> bool:
-    """True if this looks like a drink (by serving unit or description words)."""
+    """True if this looks like a drink — by serving unit OR description words.
+
+    The ml check catches anything served in millilitres. But FatSecret stores
+    many sodas with a GRAM serving, so we also match drink/brand words. Single
+    words match whole words only (so "shake" won't match "milkshakey"); multi-
+    word terms like "iced coffee" match anywhere in the description.
+    """
     if serving_unit == "ml":
         return True
-    description = description.lower()
-    for word in DRINK_WORDS:
-        if word in description:
+
+    desc = description.lower()
+    words = set(desc.split())
+    for drink_word in DRINK_WORDS:
+        if " " in drink_word:          # multi-word term like "iced coffee"
+            if drink_word in desc:
+                return True
+        elif drink_word in words:      # single word — exact whole-word match
             return True
     return False
 
 
 def parse_usda_response(food: dict) -> Nutrition:
     values = {field: 0.0 for field in NUTRIENT_IDS.values()}
-    values["brand"] = food.get("brandOwner", "") 
+    values["brand"] = food.get("brandOwner", "")
     for n in food.get("foodNutrients", []):
         nid = n.get("nutrientId")
         val = n.get("value", 0) or 0

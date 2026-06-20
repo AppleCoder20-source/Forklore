@@ -7,33 +7,46 @@
 ![Python](https://img.shields.io/badge/Python-3.12-blue)
 ![Streamlit](https://img.shields.io/badge/UI-Streamlit-red)
 ![LangChain](https://img.shields.io/badge/AI-LangChain-green)
-![Data](https://img.shields.io/badge/Data-USDA%20FoodData%20Central-orange)
+![Data](https://img.shields.io/badge/Data-USDA%20%7C%20FatSecret-orange)
 ![Models](https://img.shields.io/badge/Models-Ollama%20%7C%20Claude-purple)
 
 </div>
 
 ---
 
-Type in a food. Forklore looks it up in the USDA's official database, grades it from **A to F** on a transparent, science-backed rubric, and writes a plain-English explanation of *why* it earned that grade. It runs entirely on real, measured data — **it never guesses, never invents numbers, and tells you when it doesn't know something.**
+## A walk around the city
+
+New York City has one thing in endless supply: *food*. Step outside and it's everywhere. You duck into a **Starbucks** and order an iced vanilla latte without thinking twice. A few blocks later there's a **Halal Guys** cart, so you grab chicken over rice with the white sauce. That night a friend throws a party, and you take a **soda** from the cooler because everyone's grabbing one. Three foods, three completely normal moments — none of which anyone really stops to *think* about.
+
+And that's the point. This isn't about being against any of it. The latte is great. The halal plate is genuinely one of the best things in the city. The soda at the party is part of the fun. **Forklore isn't an anti-food app — it's not here to tell anyone to stop eating what they like.** It's here so that when you *do* buy something, you actually know what you're holding. Awareness, not guilt.
+
+Because most people have no real sense of how these stack up against each other. Is that latte "bad"? Is the soda worse? Is the halal plate fine because it's "real food"? It's all guesswork — off vibes and marketing. Forklore looks at the *actual numbers* and just says it plainly, on a scale everyone already understands: **A to F.**
+
+But the moment you try to compare a latte, a rice platter, and a can of soda, a problem shows up. A can of soda is 355ml. A halal plate might be 500 grams. A latte is somewhere in between. You can't just line up their sugar numbers — a bigger container will *always* look like it has "more," even if it's the same thing inside. To compare them honestly, everything has to be measured on the same ruler. That ruler is **per 100 grams** (for solids) and **per 100 millilitres** (for drinks) — and it's the foundation the entire app is built on. The next section is all about why.
+
+---
+
+Type in a food. Forklore looks it up in real nutrition databases, grades it from **A to F** on a transparent, science-backed rubric, and writes a plain-English explanation of *why* it earned that grade. It runs entirely on real, measured data — **it never guesses, never invents numbers, and tells you when it doesn't know something.**
 
 ### Contents
 
 1. [The idea behind it](#the-idea-behind-it)
-2. [What it does, end to end](#what-it-does-end-to-end)
-3. [Project structure](#project-structure)
-4. [The grading rubric](#1-the-grading-rubric--grounded-in-real-world-systems)
-5. [Stricter scale for drinks](#2-drinks-are-graded-on-a-stricter-scale)
-6. [Picking the right food](#3-picking-the-right-food-from-messy-data)
-7. [Handling ambiguity](#4-handling-ambiguous-searches--without-hallucinating)
-8. [Customization](#5-customization--personalized-and-grounded)
-9. [The explanation layer](#6-the-explanation-layer--language-not-math)
-10. [Homemade dishes](#7-homemade-dishes--composite-foods-graded-from-real-ingredients)
-11. [Knowing the brand](#8-knowing-the-brand)
-12. [Code at a glance](#code-at-a-glance)
-13. [Built through testing](#built-through-testing-not-assumption)
-14. [Honest limitations](#honest-limitations)
-15. [Tech stack](#tech-stack)
-16. [Running it](#running-it)
+2. [Why everything is measured per 100g/ml](#why-everything-is-measured-per-100gml-the-foundation)
+3. [What it does, end to end](#what-it-does-end-to-end)
+4. [Project structure](#project-structure)
+5. [The grading rubric](#1-the-grading-rubric--grounded-in-real-world-systems)
+6. [How drinks are graded (Nutri-Grade)](#2-how-drinks-are-graded--the-nutri-grade-system)
+7. [Picking the right food](#3-picking-the-right-food-from-messy-data)
+8. [Handling ambiguity](#4-handling-ambiguous-searches--without-hallucinating)
+9. [Customization](#5-customization--personalized-and-grounded)
+10. [The explanation layer](#6-the-explanation-layer--language-not-math)
+11. [Homemade dishes](#7-homemade-dishes--composite-foods-graded-from-real-ingredients)
+12. [The result screen & UI](#8-the-result-screen--reading-a-grade-at-a-glance)
+13. [Code at a glance](#code-at-a-glance)
+14. [Built through testing](#built-through-testing-not-assumption)
+15. [Honest limitations](#honest-limitations)
+16. [Tech stack](#tech-stack)
+17. [Running it](#running-it)
 
 ---
 
@@ -43,7 +56,45 @@ Most nutrition apps either oversimplify ("sugar bad!") or drown you in numbers y
 
 > **Real data comes from a trusted source. The AI only interprets it — it never invents it.**
 
-That sentence is the spine of the whole project. The grade always comes from real, measured USDA numbers run through a transparent rubric. The language model's *only* job is to explain those numbers in friendly terms — it is never allowed to make up a value, guess a grade, or offer a food that doesn't exist in the data. Every design decision in this document traces back to that rule.
+That sentence is the spine of the whole project. The grade always comes from real, measured numbers run through a transparent rubric. The language model's *only* job is to explain those numbers in friendly terms — it is never allowed to make up a value, guess a grade, or offer a food that doesn't exist in the data. Every design decision in this document traces back to that rule.
+
+---
+
+## Why everything is measured per 100g/ml — *the foundation*
+
+Before any food gets a grade, it gets **normalized to a fixed amount**: per 100 grams for solids, per 100 millilitres for drinks. This is the single most important idea in the whole project, because every threshold in the grader depends on it. It's worth understanding *why* it has to work this way.
+
+### The problem: raw numbers measure the package, not the food
+
+Imagine the grader just read the sugar number straight off a product, with no normalization. Now picture the **same yogurt** sold two ways:
+
+- A small **100g cup** with 8g of sugar
+- A large **500g container** with 40g of sugar
+
+It's the *identical yogurt* — same recipe, same sweetness, same everything. But the raw numbers say "8g" and "40g." If the grader compared those directly against a fixed threshold, the large one would look five times worse — and get a worse grade **purely for being a bigger package.** That's nonsense. A grade is supposed to describe *the food*, not *the size of the container it came in*.
+
+### A second way raw numbers fail: false ties
+
+The package problem makes the same food look different. There's a flip side — raw numbers can also make *different* foods look the same. Picture two products:
+
+- A **30g** snack pack of nuts with **6g of sugar**
+- A **300g** bottle of sports drink with **6g of sugar**
+
+On the raw number, they tie — both say "6g of sugar," so a naive grader would treat them as equally sugary. But they're nowhere close. Normalize them and the truth appears: the nuts are **20g of sugar per 100g** (genuinely sugary for a snack), while the sports drink is **2g per 100ml** (barely sweet). Same raw number, completely different foods. Without the common ruler, the grade can't tell them apart — and might rank them backwards.
+
+### The fix: a common ruler
+
+Normalizing to per-100 dissolves both problems. The two yogurts both become **"8g of sugar per 100g"** — identical, because they *are* identical. The nuts and the sports drink separate into 20g and 2g — different, because they *are* different. Now the number reflects how much sugar is packed into a fixed amount of the food (its *nutritional density*), which is exactly what I want to grade. Per-100 is the **shared ruler** that lets me compare any two foods fairly. It's also the basis real nutrition-labeling systems use, and the basis the databases report on.
+
+### Why this means some foods can't be graded at all
+
+Here's the consequence that surprised me in testing. To convert a food to per-100g, I need to know **how much it weighs.** Most generic foods come with that weight. But many *branded* items — especially chain-restaurant products — don't. They list nutrition per "1 donut" or "1 grande," with **no gram weight attached.**
+
+Take a real example. A branded donut listed **13g of sugar per donut**, but with *no weight*. I have the sugar, but I'm missing the donut's grams — so I **cannot** convert it to per-100g. And without that conversion, feeding "13" into a rubric built for per-100g numbers would be comparing two completely different rulers — the grade would be meaningless.
+
+I *could* have guessed ("a donut is probably ~60g") and faked a per-100g value. I deliberately **didn't** — that would violate the grounding principle. Instead, **weightless items are dropped** rather than graded on a fabricated weight. Real data or nothing. (This is also why the items that *do* show up in the app are always gradeable: the ones missing a weight were filtered out before you ever see them.)
+
+> **The one-sentence version:** per-100 is the shared ruler that makes grades about the *food* instead of the *package* — and if a food doesn't carry the weight needed to measure it on that ruler, I'd rather show nothing than invent it.
 
 ---
 
@@ -52,17 +103,17 @@ That sentence is the spine of the whole project. The grade always comes from rea
 ```
 You type a food
       ↓
-USDA FoodData Central is searched (real, official data)
+A real nutrition database is searched (USDA for generic, FatSecret for branded)
       ↓
 The right entry is selected (prefer raw/whole foods over branded products)
       ↓
 If the search is ambiguous → ask which kind you meant (grounded in real results)
       ↓
-The food is graded A–F on a per-100g/ml rubric
+The food is normalized to per-100g/ml, then graded A–F
       ↓
 A language model explains the grade in plain English
       ↓
-For drinks, you can customize it (what you added) and it re-grades on real math
+For drinks, you can customize it (what you added / your cup size) and it re-grades on real math
 ```
 
 Each of those stages was a deliberate design decision. Here's the walkthrough.
@@ -74,9 +125,9 @@ Each of those stages was a deliberate design decision. Here's the walkthrough.
 ```
 src/forklore/
 ├── app.py                 # UI + orchestration (Streamlit)
-├── models.py              # Nutrition data model + USDA parsing + drink detection
+├── models.py              # Nutrition data model + parsing + drink detection
 ├── core/
-│   ├── grader.py          # the A–F grading rubric
+│   ├── grader.py          # the A–F grading rubric (+ Nutri-Grade drinks, +/- grades)
 │   ├── retrieval.py       # ambiguity check + composite-food detection
 │   ├── customize.py       # per-100ml addition math
 │   └── combine.py         # weighted ingredient combining (homemade dishes)
@@ -85,11 +136,15 @@ src/forklore/
 │   ├── refinement.py      # ambiguity clustering (grounded)
 │   ├── ingredients.py     # ingredient + amount suggestion (homemade)
 │   └── summary.py         # the plain-English explanation
-└── data/
-    └── usda_client.py     # USDA search + best-entry selection
+├── data/
+│   ├── usda_client.py     # USDA search + best-entry selection
+│   ├── fatsecret_client.py
+│   └── fatsecret_search.py
+└── ui/
+    └── themes.py          # the 13 color themes
 ```
 
-The architecture follows a clear rule: **data shape** lives in `models.py`, **pure logic** in `core/`, **outside I/O** in `data/`, **language-model work** in `ai/`, and **UI** in `app.py`. Each part does one job and can be reasoned about on its own.
+The architecture follows a clear rule: **data shape** lives in `models.py`, **pure logic** in `core/`, **outside I/O** in `data/`, **language-model work** in `ai/`, and **UI** in `app.py` + `ui/`. Each part does one job and can be reasoned about on its own.
 
 ---
 
@@ -101,34 +156,84 @@ Forklore doesn't use made-up thresholds. The grade bands are modeled on **establ
 - **Chile's** front-of-package warning labels
 - **Singapore's Nutri-Grade** drink rating
 
-Foods are graded **per 100g / 100ml** — the same basis those systems use, and the basis USDA reports on. This matters: it measures *nutritional density* (how much sugar/fat/salt is packed into a fixed amount), not an arbitrary "serving" that varies by product.
+Everything is graded **per 100g / 100ml** — the shared ruler described above.
 
-Each food is scored on the nutrients that actually matter:
+**Solid foods** are scored on the nutrients that actually matter:
 
 | Nutrient | Role | Why |
 |----------|------|-----|
-| Added sugar | Penalty | Empty calories; the core driver for drinks |
+| Sugar | Penalty | Empty calories; the core driver for drinks |
 | Saturated fat | Penalty | Linked to heart-health concerns in excess |
 | Sodium | Penalty | Affects blood pressure over time |
 | Trans fat | Hard penalty | The worst type of fat — any amount is a red flag |
 | Fiber | Bonus | Aids digestion, helps you feel full |
 | Protein | Bonus | Builds and repairs the body |
 
-The scores are averaged into a letter grade, with **hard caps** layered on top: a drink over a sugar threshold can't escape a poor grade no matter how clean it is otherwise, mirroring how real warning-label systems work.
+Each nutrient is scored **1–4** (4 = healthiest). The three penalty nutrients are always counted; the two bonus nutrients are added **only if they score well**, so a food is never punished for lacking a nutrient it was never meant to have. The scores are **averaged** into a letter grade — and then **hard caps** are layered on top: no matter how good the average, a single extreme nutrient (very high sugar, sodium, saturated fat, or any trans fat) forces the grade down. One bad nutrient can't hide behind good ones.
+
+### A worked example: why a banana gets an A
+
+A banana per 100g is roughly: **12g sugar, ~1mg sodium, 0.1g saturated fat.**
+
+- Sugar 12g → scores **3** (real sugar, but not extreme)
+- Sodium ~1mg → scores **4** (basically none)
+- Saturated fat 0.1g → scores **4** (basically none)
+- Average = (3 + 4 + 4) / 3 = **3.67 → A**
+
+The banana wins because it's **near-zero in the things that hurt you** — no sodium, no saturated fat. Its natural sugar is its only ding, and it isn't enough to pull the grade down. It triggers none of the hard caps, so the A stands. This is the whole concept in miniature: the grade is mostly driven by *how low the harmful nutrients are*, with small bonuses for the good stuff.
 
 ### Two design calls worth highlighting
 
-**Added sugar vs. natural sugar.** "Sugar" isn't one thing. A banana's natural sugar shouldn't be penalized the way a soda's added sugar should. So Forklore tracks them separately — it **grades added sugar** and treats **natural sugar as display-only**. Fruit isn't punished for being fruit.
+**Added sugar vs. natural sugar.** "Sugar" isn't one thing. A banana's natural sugar shouldn't be penalized the way a soda's added sugar is. So Forklore tracks them separately — it **grades added sugar** and treats **natural sugar as display-only**. Fruit isn't punished for being fruit.
 
-**Fiber and protein are bonuses, not requirements.** A food shouldn't be penalized for lacking a nutrient it was never meant to have — black coffee isn't a protein source, and an apple isn't a fiber powerhouse. So fiber and protein can only *raise* a grade, never *lower* it. This was a fix discovered through testing (see below): without it, genuinely healthy foods like black coffee and apples were getting unfairly dragged down.
+**Fiber and protein are bonuses, not requirements.** A food shouldn't be penalized for lacking a nutrient it was never meant to have — black coffee isn't a protein source. So fiber and protein can only *raise* a grade, never *lower* it. This was a fix discovered through testing (see below): without it, genuinely healthy foods like black coffee and apples were getting unfairly dragged down.
 
 ---
 
-## 2. Drinks are graded on a stricter scale
+## 2. How drinks are graded — the Nutri-Grade system
 
-A drink and a solid food with the same sugar aren't equivalent — you drink far more than 100ml at once, liquid sugar hits faster (no fiber to slow it), and a sugary drink is often *only* sugar. So Forklore detects drinks and grades them on a **stricter sugar scale**.
+Drinks don't use the averaging rubric at all. They're graded on **Singapore's Nutri-Grade** beverage standard — a real public-health system — and the difference is deliberate.
 
-**A consequence worth showing off:** fruit juice intentionally grades poorly. Apple juice has *more* sugar per 100ml than many sodas — this is true, and most people don't expect it. Forklore surfaces that instead of hiding it. The app becomes a small myth-buster: "healthy" juice and soda aren't as different as the marketing suggests.
+A drink's grade is the **worse of two sub-grades**: its sugar grade and its saturated-fat grade, each measured per 100ml.
+
+| Sugar (per 100ml) | Grade | | Saturated fat (per 100ml) | Grade |
+|---|---|---|---|---|
+| ≤ 1g | A | | ≤ 0.7g | A |
+| ≤ 5g | B | | ≤ 1.2g | B |
+| ≤ 10g | C | | ≤ 2.8g | C |
+| ≤ 15g | D | | > 2.8g | D |
+| > 15g | **F** *(custom)* | | | |
+
+The `> 15g → F` tier is a custom addition beyond the standard Nutri-Grade scale, to flag the truly sugar-loaded drinks (frappuccinos, syrup bombs) that go well past a normal soda.
+
+### Why drinks are *not* averaged — the key insight
+
+This is the most important design call in the drink path, and a great thing to demo. **Averaging would let a drink's sugar hide.**
+
+Watch what happens if I average a soda (≈11g sugar, 0g saturated fat, 0mg sodium per 100ml) like a solid food:
+
+- Sugar 11g → 3
+- Saturated fat 0g → 4
+- Sodium 0mg → 4
+- Average = (3 + 4 + 4) / 3 = **3.67 → an A**
+
+A **soda would get an A.** That's absurd — and it happens because drinks are mostly water plus sugar, so they get "free" perfect scores on fat and sodium they were never going to contain. Those freebies mathematically drown out the sugar, which is the *only* thing that matters for a drink.
+
+The worse-of-two rule closes the loophole. That same soda:
+
+- Sugar 11g → **D**
+- Saturated fat 0g → A
+- Worse of the two → **D** ✓
+
+D, not A — the correct answer. By taking the *worst* sub-grade instead of the average, the sugar can't be offset by anything. This is exactly why the real Nutri-Grade standard works this way: public-health authorities don't let a soda's lack of fat excuse its sugar.
+
+### A consequence worth showing off
+
+Fruit juice intentionally grades poorly. Apple juice has *more* sugar per 100ml than many sodas — this is true, and most people don't expect it. Forklore surfaces that instead of hiding it: "healthy" juice and soda aren't as different as the marketing suggests.
+
+### Plus/minus grades
+
+On top of the letter, Forklore shows a **+/- modifier** (A+, B-, C+, …) for finer resolution, Fooducate-style. For drinks, the +/- reflects *where in the band* the sugar sits — a drink near the low edge of the C band (say 6g) gets a **C+**, while one near the high edge (9g) gets a **C-**. It's display-only: it sharpens the picture without changing the underlying grade. (F has no +/-.)
 
 ---
 
@@ -155,9 +260,9 @@ Some searches are genuinely ambiguous. "Coffee" could mean black coffee (≈1 ca
 - "Coffee" → spread of ~500× (black coffee vs. frappuccino) → **ambiguous** → ask which kind
 - "Banana" → spread of ~3.6× → **coherent** → just grade it
 
-The threshold was **tuned by testing real foods**, not guessed — coffee, banana, Big Mac, and pizza were each run through it until the line correctly separated "ambiguous" from "clear."
+The threshold was **tuned by testing real foods**, not guessed.
 
-**Clarifying it — grounded.** When a search is ambiguous, a language model clusters the *actual* USDA results into a friendly "which did you mean?" question (e.g. "Black coffee / Espresso / Cappuccino"). Crucially, **it can only offer foods that genuinely exist in the results** — each option is tied to real database IDs. The AI physically cannot invent a "Starbucks Caramel Macchiato" that USDA doesn't have. The grounding principle, enforced by the architecture itself.
+**Clarifying it — grounded.** When a search is ambiguous, a language model clusters the *actual* results into a friendly "which did you mean?" question. Crucially, **it can only offer foods that genuinely exist in the results** — each option is tied to real database IDs. The AI physically cannot invent a food the database doesn't have. The grounding principle, enforced by the architecture itself.
 
 ---
 
@@ -175,7 +280,7 @@ You added 30g of sugar to a 250ml cup
 
 A smaller cup makes the same sugar *more concentrated* → a worse grade, which is nutritionally correct.
 
-**Why this stayed grounded:** the AI never re-grades from a vague description. *You* provide real amounts; the *real grader* does the real math. This was a deliberate line — an earlier idea (let the AI estimate a grade from "I added some sugar") was rejected because it would replace measured data with a guess.
+**Why this stayed grounded:** the AI never re-grades from a vague description. *You* provide real amounts; the *real grader* does the real math. An earlier idea — let the AI estimate a grade from "I added some sugar" — was rejected because it would replace measured data with a guess.
 
 ---
 
@@ -183,7 +288,7 @@ A smaller cup makes the same sugar *more concentrated* → a worse grade, which 
 
 Once a food is graded, a language model writes a short, friendly explanation of *why*. It focuses on whichever nutrients actually drove the grade — sugar for a soda, saturated fat and sodium for a burger, protein for grilled chicken.
 
-It works strictly within guardrails: it's given **only the real numbers**, told to use the rubric's scales, and explicitly forbidden from inventing values, citing daily limits, or giving medical advice. The model does **language**; the code does **logic and math**. They never trade jobs.
+It works strictly within guardrails: it's given **only the real numbers**, told to use the rubric's scales, and explicitly forbidden from inventing values or giving medical advice. The model does **language**; the code does **logic and math**. They never trade jobs.
 
 ### Choose your engine
 
@@ -198,48 +303,73 @@ Same app, same grounding rules — your choice between local privacy and cloud q
 
 ## 7. Homemade dishes — composite foods, graded from real ingredients
 
-Some foods aren't a single database entry. A "burrito" or "sandwich" can be a restaurant item *or* something you made yourself, and a homemade version has no one USDA row to look up. So Forklore handles them specially.
+Some foods aren't a single database entry. A "burrito" or "sandwich" can be a restaurant item *or* something you made yourself. So Forklore handles them specially: when you search a composite food, it asks **restaurant or homemade?**
 
-When you search a composite food (taco, burrito, sandwich, bowl, etc.), it asks: **restaurant or homemade?**
+- **Restaurant** → it looks the dish up and grades that entry, like any other food.
+- **Homemade** → the AI suggests a typical ingredient list *with realistic gram amounts*, you edit it however you like, and then **each ingredient is looked up and combined into a real grade.**
 
-- **Restaurant** → it looks the dish up in USDA and grades that entry, like any other food.
-- **Homemade** → the AI suggests a typical ingredient list *with realistic gram amounts*, you edit it however you like, and then **each ingredient is looked up in USDA and combined into a real grade.**
-
-The combination is **weighted by amount**, which matters more than it sounds. Each ingredient's nutrients are scaled to how much of it is actually in the dish, summed, and converted back to a per-100g profile:
+The combination is **weighted by amount**:
 
 ```
 each ingredient:  per-100g nutrients × (its grams / 100)   → its real contribution
 whole dish:       sum all contributions ÷ total grams × 100 → per-100g profile
 ```
 
-This fixes a subtle trap: a naive equal average would let a small amount of an intense ingredient (30g of cheese at ~19g saturated fat per 100g) count the same as a large amount of a mild one (100g of rice). That over-weighting pushed a burrito to a D it didn't deserve. Weighting by real amounts drops its saturated fat to a fair value — and the grade with it.
+This fixes a subtle trap: a naive equal average would let a small amount of an intense ingredient (30g of cheese at ~19g saturated fat per 100g) count the same as a large amount of a mild one (100g of rice). Weighting by real amounts keeps it fair.
 
-**The grounding holds even here:** the AI only *suggests* ingredient names and portions, both fully editable. Every nutrient number comes from USDA, and the grade comes from the same rubric as everything else. The AI never estimates a grade — it proposes a starting point, and real data does the rest.
+**The grounding holds even here:** the AI only *suggests* ingredient names and portions, both fully editable. Every nutrient number comes from the database, and the grade comes from the same rubric as everything else.
 
 ---
 
-## 8. Knowing the brand
+## 8. The result screen — reading a grade at a glance
 
-When a graded food is a branded product, Forklore shows the brand alongside its name (pulled from USDA's data). Generic, whole-food entries — "Banana, raw," "Coffee, brewed" — have no brand, by design, because they aren't products. It's a small touch that reflects the same honesty as the rest of the app: it shows a brand only when there genuinely is one.
+The grade is only useful if you can *read* it instantly. The result screen is built around a single bold card, plus context that answers "okay, but should I worry?"
+
+### The grade card
+
+Every result is a **colored badge** whose color *is* the grade — green for A/B, amber for C, orange for D, red for F — so the verdict registers before you read a word. On it:
+
+- An **icon** that matches the grade (✅ good, ⚠️ so-so, ⛔ avoid)
+- A **plain-language label** ("great choice", "not great", "avoid")
+- The big **+/- grade** (e.g. `C+`) and a percentage
+- The food name and brand
+
+Below the card sit three **metric cards** — sugar, saturated fat, sodium — so the actual numbers behind the grade are right there.
+
+### The total-sugar warning (grade vs. dose)
+
+This is the screen's smartest feature, and a great talking point. The **grade stays per-100ml** (so package size can't game it — a Sprite is a D whether it's small or large). But the *amount* you drink obviously matters, so a **separate warning** shows the total sugar for the size you picked, and escalates against real daily limits:
+
+- Under 25g → a calm blue note
+- 25–50g → a yellow warning ("most of a day's sugar in one drink")
+- Over 50g → a red alarm ("⚠️ more than a full day's recommended limit")
+
+So a large frappuccino reads as, say, a **D** grade *and* a red "63g — more than a day's sugar" alarm. The letter tells you the drink's quality; the warning tells you the dose. One number can't honestly answer both, so the screen shows both — grounded in WHO (~25g/day) and US dietary guidelines (~50g/day).
+
+### Themes
+
+A sidebar **Appearance** picker offers **13 color themes** — Cool Slate (the default), Cream, Mocha, Dark, Fresh Green, Soft Sage, Berry, Ocean, Sunset, Lavender, Midnight Blue, Mint, and Classic Green. Each retheme the whole app (background, buttons, inputs, sidebar, brand color) live. The themes live in their own `ui/themes.py` so they're easy to extend.
+
+### Save results
+
+Any graded item can be kept with a **💾 Save this result** button; saved items collect in a sidebar list (name + grade) for the session, with a one-click clear. Handy for comparing a few drinks side by side during a demo.
 
 ---
 
 ## Code at a glance
 
-A few key pieces, to show how the design ideas above turn into actual code. Each is small on purpose — the logic stays readable.
+A few key pieces, to show how the design ideas above turn into actual code.
 
-### The grading rubric (`core/grader.py`)
+### The solid-food rubric (`core/grader.py`)
 
-Each nutrient is scored 1–4. Penalties (sugar, fat, sodium) are always counted; bonuses (fiber, protein) only count when present, so a clean food is never punished for what it lacks. The average maps to a letter, and hard caps enforce the worst offenders.
+Each nutrient is scored 1–4. Penalties are always counted; bonuses only count when present. The average maps to a letter, and hard caps enforce the worst offenders.
 
 ```python
-# "Bad" nutrients — always scored. Too much tanks the grade.
 scores = [
     _score_sodium(n.sodium_mg),
     _score_sat_fat(n.saturated_fat_g),
-    _score_sugar(n.bad_sugar_g, is_drink),   # drinks use a stricter scale
+    _score_sugar(n.bad_sugar_g),
 ]
-
 # Fiber & protein are BONUSES — they can raise a grade, never lower it.
 if _score_fiber(n.fiber_g) >= 3:
     scores.append(_score_fiber(n.fiber_g))
@@ -248,14 +378,23 @@ if _score_protein(n.protein_g) >= 3:
 
 avg = sum(scores) / len(scores)          # → A / B / C / D / F
 
-# Hard caps: a sugary drink can't escape a bad grade no matter what else.
-if is_drink and n.bad_sugar_g > 10:
+# Hard caps: one extreme nutrient can't hide behind good ones.
+if n.bad_sugar_g > 22.5:
     letter = "F"
 ```
 
-### Detecting ambiguity (`core/retrieval.py`)
+### Drinks: worse-of-two, not averaged (`core/grader.py`)
 
-The calorie spread across results is a proxy for "one food, or many?" A wide spread means the search is ambiguous and should ask the user which they meant.
+```python
+def _grade_drink(n):
+    # The WORSE of the sugar grade and the saturated-fat grade — so sugar
+    # can never be offset by a drink's "free" lack of fat.
+    letter = _min_letter(_drink_sugar_grade(n.bad_sugar_g),
+                         _drink_satfat_grade(n.saturated_fat_g))
+    return letter, _COLOR[letter], _DRINK_PCT[letter]
+```
+
+### Detecting ambiguity (`core/retrieval.py`)
 
 ```python
 def is_coherent(foods) -> bool:
@@ -264,47 +403,11 @@ def is_coherent(foods) -> bool:
     return (high / low) < 4        # coffee: 500× → ambiguous | banana: 3.6× → clear
 ```
 
-### Picking the right food (`data/usda_client.py`)
-
-Prefer the real, whole food over branded products — so "banana" lands on raw fruit, not a sodium-heavy snack.
-
-```python
-def pick_best_food(foods):
-    for food in foods:                          # 1. prefer a "raw" entry
-        if "raw" in food.get("description", "").lower():
-            return food
-    generic = [f for f in foods if f.get("dataType") in GENERIC_TYPES]
-    return generic[0] if generic else foods[0]  # 2. generic, else 3. fallback
-```
-
-### Grounded clustering (`ai/refinement.py`)
-
-When a search is ambiguous, the model groups the *real* results into options — and the schema forces every option to carry real database IDs, so it can't invent a food that doesn't exist.
-
-```python
-class RefinementOption(BaseModel):
-    label: str               # "Black coffee", "Espresso", ...
-    fdc_ids: list[int]       # must map to REAL USDA entries — can't be invented
-```
-
 ### Customization math (`core/customize.py`)
-
-The user's real additions are converted to the per-100ml basis the grader uses, then re-graded — real numbers, real math, no guessing.
 
 ```python
 factor = drink_size_ml / 100             # 250ml → 2.5
 nutrition.bad_sugar_g += added_sugar_g / factor   # 30g added → +12g per 100ml
-```
-
-### Weighted ingredient combining (`core/combine.py`)
-
-For homemade dishes, each ingredient's per-100g nutrients are scaled to its real amount, summed, and converted back to a per-100g profile — so a small amount of an intense ingredient doesn't dominate.
-
-```python
-factor = grams / 100.0                          # 30g of cheese → 0.30
-totals[field] += getattr(n, field) * factor     # scale to its real amount
-...
-per_100g = (totals[field] / total_grams) * 100  # back to a per-100g dish profile
 ```
 
 ---
@@ -315,8 +418,9 @@ Several of the best design decisions came from **running the app and noticing wh
 
 - A banana graded a **D** → traced to a bad *branded* entry (594mg sodium) → fixed by preferring raw foods.
 - Black coffee graded a **C**, apple a **B** → traced to fiber/protein unfairly penalizing clean foods → fixed by making them bonuses.
-- A homemade burrito graded a **D** → traced to *equal-weighting* the ingredients, which let a little cheese count as much as a lot of rice → fixed by weighting the combine by real amounts.
-- The diversity threshold was **tuned against real foods** until it correctly told ambiguous (coffee) from clear (banana).
+- A soda (Sprite) graded an **A** → traced to it not being detected as a drink, so it was averaged (and its sugar hidden) → fixed by improving drink detection.
+- The old drink scale had a harsh cliff (3g sugar → A, but 6g → D) → replaced with the smooth Nutri-Grade bands.
+- Grades that *climbed* on every interaction → traced to mutating a cached object across Streamlit re-runs → fixed by copying instead of mutating.
 
 These weren't caught by error messages — there were no errors. They were caught by checking the output against what a grade *should* be. That kind of evaluation is the heart of the project.
 
@@ -324,10 +428,8 @@ These weren't caught by error messages — there were no errors. They were caugh
 
 ## Honest limitations
 
-A system is only as trustworthy as it is honest about its edges:
-
-- **USDA's branded coverage is patchy.** It has McDonald's menu items but not actual Starbucks or Dunkin coffee drinks. Forklore only ever offers what genuinely exists — it never promises a food it can't back with real data. *(Roadmap: integrate Open Food Facts for broader branded coverage.)*
-- **Some foods vary by preparation.** "Iced coffee" depends entirely on how it's made — handled by the customization feature, where you supply the real additions.
+- **Branded coverage is patchy.** USDA has McDonald's items but not real Starbucks or Dunkin drinks; FatSecret fills some of that gap, but many branded items are listed *without a weight* and therefore can't be graded (see the per-100 section). Forklore only ever offers what it can back with real data.
+- **Some foods vary by preparation.** "Iced coffee" depends entirely on how it's made — handled by the customization feature.
 - **Keyword-based drink detection** is a heuristic and can occasionally misfire on unusual descriptions.
 
 Naming these isn't a weakness — it's the same principle as everything else. The app would rather be honest about what it doesn't know than fake an answer.
@@ -338,9 +440,9 @@ Naming these isn't a weakness — it's the same principle as everything else. Th
 
 | Layer | Tool |
 |-------|------|
-| UI | Streamlit |
-| Data | USDA FoodData Central API |
-| Grading | Pure-Python rubric (per-100g/ml, hard caps) |
+| UI | Streamlit (+ a custom themed result card) |
+| Data | USDA FoodData Central + FatSecret |
+| Grading | Pure-Python rubric (per-100g/ml, Nutri-Grade drinks, hard caps) |
 | AI orchestration | LangChain |
 | Models | Ollama (`llama3.2`) locally, or Anthropic Claude |
 | Validation | Pydantic |
@@ -359,19 +461,16 @@ uv sync
 # 2. Pull the local model (for local mode)
 ollama pull llama3.2
 
-# 3. Set up your API key in a .env file
+# 3. Set up your API keys in a .env file
 #    USDA_API_KEY=...        (free from fdc.nal.usda.gov)
+#    FATSECRET_KEY=...       (for branded items)
 #    ANTHROPIC=...           (optional, for Claude mode)
 
 # 4. Run it
 uv run streamlit run src/forklore/app.py
 ```
 
----
-
-## What's next
-
-Forklore's foundation is complete: principled grading, grounded ambiguity handling, raw-food selection, real-math customization, and a dual-model explanation layer. Planned next steps include a richer concerns analysis, additive/dye detection, search history and caching, and a multi-step "rescue agent" for queries the database doesn't recognize — each extending the same core principle: **grade real data, explain it honestly, never guess.**
+> **Tip:** after editing any module, fully restart Streamlit (Ctrl+C + relaunch) — a "Rerun" won't reload changed imports.
 
 ---
 
@@ -379,6 +478,6 @@ Forklore's foundation is complete: principled grading, grounded ambiguity handli
 
 **Forklore** — *grade real data, explain it honestly, never guess.*
 
-Built with Python, Streamlit, LangChain, and USDA FoodData Central.
+Built with Python, Streamlit, LangChain, USDA FoodData Central, and FatSecret.
 
 </div>
