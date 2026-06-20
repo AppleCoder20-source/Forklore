@@ -16,7 +16,7 @@
 
 ## A walk around the city
 
-New York City has one thing in endless supply: *food*. Step outside and it's everywhere. You duck into a **Starbucks** and order an iced vanilla latte without thinking twice. A few blocks later there's a **Halal Guys** cart, so you grab chicken over rice with the white sauce. That night a friend throws a party, and you take a **soda** from the cooler because everyone's grabbing one. Three foods, three completely normal moments — none of which anyone really stops to *think* about.
+New York City has one thing in endless supply: *food*. Step outside and it's everywhere. You go into a **Starbucks** and order an iced vanilla latte without thinking twice. A few blocks later there's a **Halal Guys** cart, so you grab chicken over rice with the white sauce. That night a friend throws a party, and you take a **soda** from the cooler because everyone's grabbing one. Three foods, three completely normal moments — none of which anyone really stops to *think* about.
 
 And that's the point. This isn't about being against any of it. The latte is great. The halal plate is genuinely one of the best things in the city. The soda at the party is part of the fun. **Forklore isn't an anti-food app — it's not here to tell anyone to stop eating what they like.** It's here so that when you *do* buy something, you actually know what you're holding. Awareness, not guilt.
 
