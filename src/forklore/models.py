@@ -83,6 +83,8 @@ def parse_usda_response(food: dict) -> Nutrition:
         food.get("description", ""),
         food.get("servingSizeUnit"),
     )
+    #Checks to see if it is a drink and if bad sugar value is 0,
+    # make total sugar equal to bad sugar because for soda all of sugar is added 
     if values["bad_sugar_g"] == 0 and is_drink:
         values["bad_sugar_g"] = values["natural_sugar_g"]
 

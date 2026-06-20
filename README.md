@@ -16,7 +16,7 @@
 
 ## A walk around the city
 
-New York City has one thing in endless supply: *food*. Step outside and it's everywhere. You go into a **Starbucks** and order an iced vanilla latte without thinking twice. A few blocks later there's a **Halal Guys** cart, so you grab chicken over rice with the white sauce. That night a friend throws a party, and you take a **soda** from the cooler because everyone's grabbing one. Three foods, three completely normal moments — none of which anyone really stops to *think* about.
+New York City has one thing in endless supply: *food*. Step outside and it's everywhere. You duck into a **Starbucks** and order an iced vanilla latte without thinking twice. A few blocks later there's a **Halal Guys** cart, so you grab chicken over rice with the white sauce. That night a friend throws a party, and you take a **soda** from the cooler because everyone's grabbing one. Three foods, three completely normal moments — none of which anyone really stops to *think* about.
 
 And that's the point. This isn't about being against any of it. The latte is great. The halal plate is genuinely one of the best things in the city. The soda at the party is part of the fun. **Forklore isn't an anti-food app — it's not here to tell anyone to stop eating what they like.** It's here so that when you *do* buy something, you actually know what you're holding. Awareness, not guilt.
 
@@ -75,16 +75,16 @@ It's the *identical yogurt* — same recipe, same sweetness, same everything. Bu
 
 ### A second way raw numbers fail: false ties
 
-The package problem makes the same food look different. There's a flip side — raw numbers can also make *different* foods look the same. Picture two products:
+The package problem makes the same food look different. There's a flip side — raw numbers can also make *different* foods look the same. Picture two everyday items that happen to report the same sugar:
 
-- A **30g** snack pack of nuts with **6g of sugar**
-- A **300g** bottle of sports drink with **6g of sugar**
+- A **small (40g) fun-size candy bar** with about **22g of sugar**
+- A **can (355ml) of soda** with about **22g of sugar**
 
-On the raw number, they tie — both say "6g of sugar," so a naive grader would treat them as equally sugary. But they're nowhere close. Normalize them and the truth appears: the nuts are **20g of sugar per 100g** (genuinely sugary for a snack), while the sports drink is **2g per 100ml** (barely sweet). Same raw number, completely different foods. Without the common ruler, the grade can't tell them apart — and might rank them backwards.
+On the raw number they tie at "22g," so a naive grader would call them equally sugary. But normalize them and the gap is huge: the candy bar is **~55g of sugar per 100g**, while the soda is about **~6g per 100ml**. The candy is far more sugar-dense per bite than the soda is per sip — they only "tie" because the soda's sugar is spread through a much larger volume. Same raw number, very different concentration — without the common ruler, the grade can't tell them apart, and could even rank them backwards.
 
 ### The fix: a common ruler
 
-Normalizing to per-100 dissolves both problems. The two yogurts both become **"8g of sugar per 100g"** — identical, because they *are* identical. The nuts and the sports drink separate into 20g and 2g — different, because they *are* different. Now the number reflects how much sugar is packed into a fixed amount of the food (its *nutritional density*), which is exactly what I want to grade. Per-100 is the **shared ruler** that lets me compare any two foods fairly. It's also the basis real nutrition-labeling systems use, and the basis the databases report on.
+Normalizing to per-100 dissolves both problems. The two yogurts both become **"8g of sugar per 100g"** — identical, because they *are* identical. The candy bar and the soda separate into ~55g and ~6g per 100 — different, because they *are* different. Now the number reflects how much sugar is packed into a fixed amount of the food (its *nutritional density*), which is exactly what I want to grade. Per-100 is the **shared ruler** that lets me compare any two foods fairly. It's also the basis real nutrition-labeling systems use, and the basis the databases report on.
 
 ### Why this means some foods can't be graded at all
 
@@ -122,29 +122,235 @@ Each of those stages was a deliberate design decision. Here's the walkthrough.
 
 ## Project structure
 
+Built today (✅) alongside what's planned next (⏳), so the layout shows both the
+current app and where it's headed:
+
 ```
 src/forklore/
-├── app.py                 # UI + orchestration (Streamlit)
-├── models.py              # Nutrition data model + parsing + drink detection
+├── app.py                 # ✅ UI + orchestration (Streamlit)
+├── models.py              # ✅ Nutrition data model + parsing + drink detection
+├── config.py              # ⏳ env vars (keys, hosts) in one place
+├── analyzer.py            # ⏳ planned conductor — composes the whole flow
+├── api.py                 # ⏳ planned FastAPI layer (same backend, HTTP)
 ├── core/
-│   ├── grader.py          # the A–F grading rubric (+ Nutri-Grade drinks, +/- grades)
-│   ├── retrieval.py       # ambiguity check + composite-food detection
-│   ├── customize.py       # per-100ml addition math
-│   └── combine.py         # weighted ingredient combining (homemade dishes)
+│   ├── grader.py          # ✅ the A–F grading rubric (Nutri-Grade drinks, +/- grades)
+│   ├── retrieval.py       # ✅ ambiguity check + composite-food detection
+│   ├── customize.py       # ✅ per-100ml addition math
+│   ├── combine.py         # ✅ weighted ingredient combining (homemade dishes)
+│   └── additives.py       # ⏳ planned dye/additive detection from ingredients
 ├── ai/
-│   ├── llm.py             # model factory (local / Claude)
-│   ├── refinement.py      # ambiguity clustering (grounded)
-│   ├── ingredients.py     # ingredient + amount suggestion (homemade)
-│   └── summary.py         # the plain-English explanation
+│   ├── llm.py             # ✅ model factory (local / Claude)
+│   ├── refinement.py      # ✅ ambiguity clustering (grounded)
+│   ├── ingredients.py     # ✅ ingredient + amount suggestion (homemade)
+│   ├── summary.py         # ✅ the plain-English explanation
+│   └── rescue.py          # ⏳ planned query-rescue agent (rewrite / ask / give-up)
 ├── data/
-│   ├── usda_client.py     # USDA search + best-entry selection
-│   ├── fatsecret_client.py
-│   └── fatsecret_search.py
+│   ├── usda_client.py     # ✅ USDA search + best-entry selection
+│   ├── fatsecret_client.py# ✅ FatSecret auth + detail fetch
+│   ├── fatsecret_search.py# ✅ source routing (USDA vs FatSecret)
+│   ├── history.py         # ⏳ planned SQLite history of lookups
+│   └── cache.py           # ⏳ planned SQLite cache of graded reports
 └── ui/
-    └── themes.py          # the 13 color themes
+    ├── themes.py          # ✅ the 13 color themes
+    └── dashboard.py       # ⏳ optional alternate result layout
 ```
 
 The architecture follows a clear rule: **data shape** lives in `models.py`, **pure logic** in `core/`, **outside I/O** in `data/`, **language-model work** in `ai/`, and **UI** in `app.py` + `ui/`. Each part does one job and can be reasoned about on its own.
+
+The **planned** pieces (⏳) extend the same structure without breaking it: an
+`analyzer.py` to lift orchestration out of `app.py`, an `api.py` FastAPI layer
+sharing that same backend, a `rescue.py` agent for queries the databases don't
+recognize, additive detection, and SQLite history + caching so repeat lookups
+are instant.
+
+---
+
+## Two data sources — and why both
+
+Forklore reads from **two** real nutrition APIs, not one, because neither alone
+covers the food a person actually runs into walking around a city.
+
+**USDA FoodData Central** — the U.S. government's official food database. It's
+authoritative and clean for *generic, whole foods*: "banana, raw," "coffee,
+brewed," "chicken breast." It's the source of truth for anything unbranded. Its
+weakness: **it doesn't have most chain-restaurant menus.** Search "Starbucks
+caramel macchiato" or "Halal Guys chicken over rice" and USDA returns nothing
+useful — it has McDonald's items but not Starbucks, Dunkin, or a street cart.
+
+**FatSecret** — a commercial nutrition database with deep *branded and
+restaurant* coverage. This is where the chain items live: the actual Starbucks
+latte, the Dunkin iced coffee, the branded soda. It fills exactly the gap USDA
+leaves. Its weakness: data quality is uneven (some items have no weight and
+can't be graded — see the per-100 section), so the app filters to real,
+gradeable entries only.
+
+**Why two:** the city is full of *branded* food. If the app only read USDA, a
+huge share of what you'd actually want to grade — that Starbucks drink, that
+chain meal — simply wouldn't be found. Pairing a trusted generic source (USDA)
+with a broad branded source (FatSecret) means the app can grade both "a banana"
+*and* "a Starbucks vanilla latte." A routing step sends each search to the
+source that fits: generic terms go to USDA, branded/chain terms go to FatSecret.
+
+```
+"banana"                → USDA        (clean generic data)
+"Starbucks latte"       → FatSecret   (real chain menu item)
+"coffee"                → USDA        (then refinement clarifies which kind)
+"Halal Guys over rice"  → FatSecret   (branded/chain coverage)
+```
+
+Both feed into the *same* `Nutrition` model and the *same* grader — the source
+only changes where the numbers come from, never how they're judged. And the
+grounding rule holds across both: real data from a trusted source, or nothing.
+
+---
+
+## Architecture diagrams
+
+Now that the two data sources are clear, here's how a search actually moves
+through the system. The first diagram is the **detailed flow** (every decision
+point, including ambiguous queries); the second is a **UML class view** of the
+core types and one-way module dependencies. Both render automatically on GitHub.
+
+### Flow — a query's full journey
+
+```mermaid
+flowchart TD
+    A([User types a food]) --> ROUTE{Route the query<br/>generic or branded?}
+
+    ROUTE -- "generic<br/>(banana, coffee)" --> USDA[(USDA<br/>FoodData Central)]
+    ROUTE -- "branded/chain<br/>(Starbucks, Dunkin)" --> FS[(FatSecret)]
+
+    USDA --> ANY{Any results?}
+    FS --> ANY
+    ANY -- no --> NORES[Show: no real data<br/>don't fake it]
+    ANY -- yes --> WEIGHT{Has a real<br/>per-100 weight?}
+
+    WEIGHT -- "no (weightless<br/>branded item)" --> DROP[Drop it —<br/>can't normalize]
+    WEIGHT -- yes --> COHERE{Results coherent?<br/>calorie spread < ~3x}
+
+    COHERE -- "scattered<br/>(coffee: 5–500 cal)" --> AMB[Ambiguous query]
+    AMB --> CLUSTER[AI clusters the REAL results<br/>into grouped options]
+    CLUSTER --> ASK[/“Which kind did you mean?”<br/>Black coffee · Latte · Frappuccino/]
+    ASK --> PICK[User picks → maps to real IDs]
+    PICK --> PARSE
+
+    COHERE -- "coherent<br/>(banana)" --> BEST[Pick best entry<br/>prefer raw/whole food]
+    BEST --> PARSE[Parse → Nutrition object]
+
+    PARSE --> NORM[Normalize to<br/>per-100g / per-100ml]
+    NORM --> DRINK{Drink or solid?<br/>is_drink_food}
+
+    DRINK -- drink --> NG[Nutri-Grade:<br/>worse of sugar &amp; sat-fat<br/>per 100ml]
+    DRINK -- solid --> SOLID[Score sugar/sodium/sat-fat 1–4<br/>+ fiber/protein bonus<br/>average + hard caps]
+
+    NG --> GRADE[Letter + plus/minus + %]
+    SOLID --> GRADE
+    GRADE --> SUMMARY[LLM writes plain-English<br/>“why this grade” &mdash; numbers only]
+    SUMMARY --> CARD[Themed result card<br/>+ escalating total-sugar warning]
+
+    %% Customization loop for drinks
+    CARD -. "user edits cup size /<br/>added sugar (drinks)" .-> CUSTOM[apply_additions<br/>recompute per-100ml]
+    CUSTOM --> NORM
+
+    %% Composite / homemade branch (special case, shown last)
+    A -. "composite food<br/>(taco, burrito, bowl)" .-> COMP{Restaurant<br/>or homemade?}
+    COMP -- restaurant --> ROUTE
+    COMP -- homemade --> ING[AI suggests ingredients<br/>+ realistic gram amounts]
+    ING --> EDIT[User edits the list]
+    EDIT --> COMBINE[Weighted combine<br/>each ingredient × its grams]
+    COMBINE --> NORM
+```
+
+**How to read it:** the spine runs top-to-bottom — **route → fetch → validate
+(weight check) → resolve ambiguity → parse → normalize → grade → explain →
+render.** Two side-loops hang off the spine: the **customization loop** (drinks
+re-grade when you enter your real cup size / additions) and the **composite
+branch** (a homemade dish is built from weighted ingredients, then rejoins the
+normal path at normalization). Notice every "fork" is a real decision in the
+code: *any results?*, *has a weight?*, *coherent or ambiguous?*, *drink or
+solid?* — each maps to a specific check.
+
+### UML — core types and module dependencies
+
+```mermaid
+classDiagram
+    class Nutrition {
+        +str description
+        +str serving_unit
+        +float bad_sugar_g
+        +float natural_sugar_g
+        +float sodium_mg
+        +float saturated_fat_g
+        +float trans_fat_g
+        +float fiber_g
+        +float protein_g
+        +str brand
+    }
+
+    class models {
+        +parse_usda_response(food) Nutrition
+        +parse_fatsecret_response(food) Nutrition
+        +is_drink_food(desc, unit) bool
+    }
+
+    class data_sources {
+        +search_food(query) results, source
+        +usda_search_all(query)
+        +search_fatsecret(query)
+        +get_food_detail(id)
+    }
+
+    class grader {
+        +grade_food(n) tuple
+        +plus_minus_grade(...) str
+        -_grade_drink(n)
+        -_score_sugar/sodium/sat_fat()
+    }
+
+    class retrieval {
+        +is_coherent(foods) bool
+        +is_composite(query) bool
+    }
+
+    class ai {
+        +get_llm(provider)
+        +write_summary(n, grade)
+        +refine_query(query, results)
+        +suggest_ingredients(dish)
+    }
+
+    class customize {
+        +apply_additions(n, ...) Nutrition
+    }
+
+    class combine {
+        +grade_from_ingredients(items) Nutrition
+    }
+
+    class app {
+        Streamlit UI + orchestration
+    }
+
+    app --> data_sources : 1. fetch
+    app --> retrieval : 2. coherent? composite?
+    app --> ai : 3. refine / explain
+    app --> grader : 4. grade
+    app --> customize : drinks
+    app --> combine : homemade
+    data_sources --> models : raw JSON →
+    models --> Nutrition : builds
+    grader --> Nutrition : reads
+    customize --> Nutrition : returns a copy
+    combine --> Nutrition : builds
+    ai ..> Nutrition : reads for summary
+```
+
+The UML captures the spine: **data sources feed `models`, which build a
+`Nutrition`; `retrieval` decides routing/ambiguity; `grader` judges; `ai`
+explains; `customize`/`combine` handle the two special cases; `app` orchestrates
+everything.** Dependencies flow one way — `app` knows about all of them, but
+`grader` and `models` know nothing about the UI, which is what keeps the core
+logic testable in isolation.
 
 ---
 
@@ -173,14 +379,21 @@ Each nutrient is scored **1–4** (4 = healthiest). The three penalty nutrients 
 
 ### A worked example: why a banana gets an A
 
-A banana per 100g is roughly: **12g sugar, ~1mg sodium, 0.1g saturated fat.**
+A banana per 100g is roughly **15g sugar, ~1mg sodium, 0.1g saturated fat** —
+but here's the subtlety that makes it an A. That 15g is *natural* sugar (total
+sugar), and the grader scores **added** sugar (`bad_sugar_g`), not total. A
+banana has no added sugar, so the value the grader actually reads is **0**:
 
-- Sugar 12g → scores **3** (real sugar, but not extreme)
+- Added sugar (graded) **0g** → scores **4** (its natural sugar is exempt)
 - Sodium ~1mg → scores **4** (basically none)
 - Saturated fat 0.1g → scores **4** (basically none)
-- Average = (3 + 4 + 4) / 3 = **3.67 → A**
+- Average = (4 + 4 + 4) / 3 = **4.0 → A**
 
-The banana wins because it's **near-zero in the things that hurt you** — no sodium, no saturated fat. Its natural sugar is its only ding, and it isn't enough to pull the grade down. It triggers none of the hard caps, so the A stands. This is the whole concept in miniature: the grade is mostly driven by *how low the harmful nutrients are*, with small bonuses for the good stuff.
+The banana wins because the harmful nutrients are all near-zero *and* its fruit
+sugar doesn't count against it. This is the whole concept in miniature: the
+grade is driven by *how low the harmful nutrients are*, and natural sugar is
+tracked separately so fruit isn't punished for being fruit. (Contrast a soda:
+its sugar has nowhere to hide — see the next section.)
 
 ### Two design calls worth highlighting
 
@@ -478,6 +691,6 @@ uv run streamlit run src/forklore/app.py
 
 **Forklore** — *grade real data, explain it honestly, never guess.*
 
-Built with Python, Streamlit, LangChain, USDA FoodData Central, and FatSecrets .
+Built with Python, Streamlit, LangChain, USDA FoodData Central, and FatSecret.
 
 </div>
