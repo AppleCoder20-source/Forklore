@@ -697,6 +697,16 @@ uv run streamlit run src/forklore/app.py
 
 ---
 
+## Future planning
+
+Forklore's foundation is solid, but there's a lot I want to do next:
+
+- **Build a team.** I'd like to keep growing this with other people — I'm looking for more members, so if any of this is interesting to you, come find me.
+- **Talk to real clinicians.** I work in health IT at a hospital (Northwell Health), so I want to reach out to doctors and dietitians there to pressure-test the grading against real medical guidance — making sure the thresholds reflect what professionals actually recommend.
+- **Add barcode scanning.** Instead of typing a food, scan the barcode on the package and have it pull the product straight from the database — faster, and it nails the exact branded item every time.
+
+---
+
 <div align="center">
 
 **Forklore** — *grade real data, explain it honestly, never guess.*
