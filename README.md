@@ -86,6 +86,16 @@ On the raw number they tie at "22g," so a naive grader would call them equally s
 
 Normalizing to per-100 dissolves both problems. The two yogurts both become **"8g of sugar per 100g"** — identical, because they *are* identical. The candy bar and the soda separate into ~55g and ~6g per 100 — different, because they *are* different. Now the number reflects how much sugar is packed into a fixed amount of the food (its *nutritional density*), which is exactly what I want to grade. Per-100 is the **shared ruler** that lets me compare any two foods fairly. It's also the basis real nutrition-labeling systems use, and the basis the databases report on.
 
+### Why per-100 also protects you from a real marketing trick
+
+This isn't just a technical nicety — it defends against something food companies genuinely do. Nutrition labels show values **per serving**, and *the company gets to decide what a "serving" is.* That's a loophole, and it gets used:
+
+- A bag of chips splits into "3 servings" so the label can show a small sugar/fat/sodium number — even though most people eat the whole bag in one sitting.
+- A 20oz soda bottle is often labeled as "2.5 servings," so the sugar figure on the front looks like half of what you'll actually drink.
+- Cooking sprays list a "serving" as a fraction-of-a-second spray so they can legally print "0 calories."
+
+By the company's serving math, a product can look modest. Measured on the **same per-100 ruler for everyone**, it can't hide — the concentration is the concentration, no matter how the package slices it. So normalizing to per-100 doesn't just make the math consistent; it strips away the serving-size sleight of hand and shows you what's really there.
+
 ### Why this means some foods can't be graded at all
 
 Here's the consequence that surprised me in testing. To convert a food to per-100g, I need to know **how much it weighs.** Most generic foods come with that weight. But many *branded* items — especially chain-restaurant products — don't. They list nutrition per "1 donut" or "1 grande," with **no gram weight attached.**
