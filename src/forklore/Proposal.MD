@@ -1,6 +1,5 @@
 # Project Proposal: Forklore — An LLM-Powered Food & Drink Nutrition Grader
 
-**Author:** Mashiur
 **Course:** CAP 942
 **Date:** June 2026
 
